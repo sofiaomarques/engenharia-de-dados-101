@@ -79,6 +79,51 @@ def salvar_csv(registros: list[dict], caminho_saida: Path, colunas: list[str]) -
             escritor.writerow({coluna: registro.get(coluna, "") for coluna in colunas})
 
 
+def limpar_email(email: str) -> str | None:
+    email = str(email).strip().lower()
+    if "@" not in email:
+        return None
+    return email
+
+
+def limpar_estado(estado: str) -> str:
+    return str(estado).strip().upper()
+
+
+def limpar_data(data: str) -> str:
+    data = str(data).strip()
+    if "/" in data:
+        dia = data[:2]
+        mes = data[3:5]
+        ano = data[6:]
+        return f"{ano}-{mes}-{dia}"
+    return data
+
+
+def limpar_categoria(categoria: str) -> str | None:
+    categorias = {nome.casefold(): nome for nome in CATEGORIAS_VALIDAS}
+    return categorias.get(str(categoria).strip().casefold())
+
+
+def limpar_ativo(ativo: str) -> int | None:
+    ativo = str(ativo).strip().casefold()
+    if ativo in {"sim", "1"}:
+        return 1
+    if ativo in {"nao", "não", "0", ""}:
+        return 0
+    return None
+
+
+def limpar_float(valor: str) -> float | None:
+    valor = str(valor).strip().replace(",", ".")
+    if not valor:
+        return None
+    try:
+        return float(valor)
+    except ValueError:
+        return None
+
+
 def limpar_clientes(bronze: list[dict]) -> list[dict]:
     """
     Aplica as regras de limpeza de clientes descritas no topo do arquivo.
@@ -92,12 +137,9 @@ def limpar_clientes(bronze: list[dict]) -> list[dict]:
         except (KeyError, TypeError, ValueError):
             continue
 
-        email = str(registro.get("email", "")).strip().lower()
-        if "@" not in email:
-            continue
-
-        estado = str(registro.get("estado", "")).strip().upper()
-        if estado not in ESTADOS_VALIDOS:
+        email = limpar_email(registro.get("email", ""))
+        estado = limpar_estado(registro.get("estado", ""))
+        if email is None or estado not in ESTADOS_VALIDOS:
             continue
 
         clientes_por_id[id_cliente] = {
@@ -116,8 +158,34 @@ def limpar_produtos(bronze: list[dict]) -> list[dict]:
     """
     Aplica as regras de limpeza de produtos descritas no topo do arquivo.
     """
-    # TODO: implemente a limpeza de produtos
-    raise NotImplementedError("Implemente limpar_produtos()")
+    produtos = []
+    ids_vistos = set()
+
+    for registro in bronze:
+        try:
+            id_produto = int(registro["id_produto"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        if id_produto in ids_vistos:
+            continue
+
+        preco = limpar_float(registro.get("preco", ""))
+        categoria = limpar_categoria(registro.get("categoria", ""))
+        ativo = limpar_ativo(registro.get("ativo", ""))
+        if preco is None or preco <= 0 or categoria is None or ativo is None:
+            continue
+
+        produtos.append({
+            "id_produto": id_produto,
+            "nome": str(registro.get("nome", "")).strip(),
+            "categoria": categoria,
+            "preco": preco,
+            "ativo": ativo,
+        })
+        ids_vistos.add(id_produto)
+
+    return produtos
 
 
 def limpar_vendas(bronze: list[dict], ids_clientes_validos: set[int], ids_produtos_validos: set[int]) -> list[dict]:
@@ -126,8 +194,55 @@ def limpar_vendas(bronze: list[dict], ids_clientes_validos: set[int], ids_produt
     incluindo o filtro de integridade referencial contra clientes/produtos
     já limpos.
     """
-    # TODO: implemente a limpeza de vendas
-    raise NotImplementedError("Implemente limpar_vendas()")
+    vendas = []
+    ids_vendas_vistos = set()
+
+    for registro in bronze:
+        try:
+            id_venda = int(registro["id_venda"])
+            id_cliente = int(registro["id_cliente"])
+            id_produto = int(registro["id_produto"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        if id_venda in ids_vendas_vistos:
+            continue
+
+        if id_cliente not in ids_clientes_validos or id_produto not in ids_produtos_validos:
+            continue
+
+        quantidade_original = str(registro.get("quantidade", "")).strip()
+        if not quantidade_original:
+            continue
+
+        try:
+            quantidade = int(quantidade_original)
+        except ValueError:
+            continue
+
+        if quantidade <= 0:
+            continue
+
+        valor_total = limpar_float(registro.get("valor_total", ""))
+        if valor_total is None or valor_total <= 0:
+            continue
+
+        data_venda = limpar_data(str(registro.get("data_venda", "")))
+
+        if not data_venda:
+            continue
+
+        vendas.append({
+            "id_venda": id_venda,
+            "id_cliente": id_cliente,
+            "id_produto": id_produto,
+            "quantidade": quantidade,
+            "data_venda": data_venda,
+            "valor_total": valor_total,
+        })
+        ids_vendas_vistos.add(id_venda)
+
+    return vendas
 
 
 def main() -> None:
