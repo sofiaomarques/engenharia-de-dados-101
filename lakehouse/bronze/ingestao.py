@@ -42,7 +42,6 @@ def ler_produtos_txt() -> list[dict]:
 
                 if len(valores) != len(cabecalho):
                     continue
-
                 registro = dict(zip(cabecalho, valores))
                 registros.append(registro)
 

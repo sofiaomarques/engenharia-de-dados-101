@@ -84,8 +84,32 @@ def limpar_clientes(bronze: list[dict]) -> list[dict]:
     Aplica as regras de limpeza de clientes descritas no topo do arquivo.
     Retorna a lista final (sem duplicatas, sem e-mails inválidos).
     """
-    # TODO: implemente a limpeza de clientes
-    raise NotImplementedError("Implemente limpar_clientes()")
+    clientes_por_id = {}
+
+    for registro in bronze:
+        try:
+            id_cliente = int(registro["id_cliente"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        email = str(registro.get("email", "")).strip().lower()
+        if "@" not in email:
+            continue
+
+        estado = str(registro.get("estado", "")).strip().upper()
+        if estado not in ESTADOS_VALIDOS:
+            continue
+
+        clientes_por_id[id_cliente] = {
+            "id_cliente": id_cliente,
+            "nome": str(registro.get("nome", "")).strip(),
+            "email": email,
+            "cidade": str(registro.get("cidade", "")).strip(),
+            "estado": estado,
+            "data_cadastro": str(registro.get("data_cadastro", "")).strip(),
+        }
+
+    return list(clientes_por_id.values())
 
 
 def limpar_produtos(bronze: list[dict]) -> list[dict]:
