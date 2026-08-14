@@ -68,26 +68,23 @@ def salvar_csv(registros: list[dict], caminho_saida: Path, colunas: list[str]) -
 
 def calcular_resumo_por_categoria(vendas: list[dict], produtos: list[dict]) -> list[dict]:
     """Uma linha por categoria: quantidade_vendida e valor_total somados."""
-    produtos_por_id = {int(produto["id_produto"]): produto["categoria"] for produto in produtos}
-    resumo = {}
+    produtos_dict = {int(produto["id_produto"]): produto for produto in produtos}
+    categoria_dict = defaultdict(float)
+    quantidade_dict = defaultdict(int)
 
     for venda in vendas:
         id_produto = int(venda["id_produto"])
-        categoria = produtos_por_id[id_produto]
-
-        if categoria not in resumo:
-            resumo[categoria] = {"categoria": categoria, "quantidade_vendida": 0, "valor_total": 0.0}
-
-        resumo[categoria]["quantidade_vendida"] += int(venda["quantidade"])
-        resumo[categoria]["valor_total"] += float(venda["valor_total"])
+        categoria = produtos_dict[id_produto]["categoria"]
+        categoria_dict[categoria] += float(venda["valor_total"])
+        quantidade_dict[categoria] += int(venda["quantidade"])
 
     return [
         {
             "categoria": categoria,
-            "quantidade_vendida": dados["quantidade_vendida"],
-            "valor_total": round(dados["valor_total"], 2),
+            "quantidade_vendida": quantidade_dict[categoria],
+            "valor_total": round(valor_total, 2),
         }
-        for categoria, dados in sorted(resumo.items())
+        for categoria, valor_total in sorted(categoria_dict.items())
     ]
 
 
