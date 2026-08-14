@@ -113,7 +113,6 @@ def limpar_ativo(ativo: str) -> int | None:
         return 0
     return None
 
-
 def limpar_float(valor: str) -> float | None:
     valor = str(valor).strip().replace(",", ".")
     if not valor:
@@ -243,7 +242,6 @@ def limpar_vendas(bronze: list[dict], ids_clientes_validos: set[int], ids_produt
         ids_vendas_vistos.add(id_venda)
 
     return vendas
-
 
 def main() -> None:
     clientes_bronze = ler_csv(BRONZE_SAIDA / "clientes_bronze.csv")
